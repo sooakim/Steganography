@@ -9,16 +9,16 @@ import Foundation
 import UIKit
 
 protocol STEncodable {
+
     /// 스테가노그래피 기법을 적용한 이미지를 생성합니다.
     /// - Parameters:
-    ///   - message: 이미지에 합성할 원문 메시지
+    ///   - data: 이미지에 합성할 데이터
     ///   - image: 합성할 원본 이미지
-    ///   - options: 메시지 암호화 관련 옵션
+    ///   - progressHandler: 진행상황을 표시하는데 사용할 수 있습니다. (0~1 사이의 값)
     /// - Returns: 합성된 이미지를 반환합니다.
     func encode(
-        message: String,
+        data: Data,
         into image: UIImage,
-        with options: EncryptionOptions,
         progressHandler: ((CGFloat) async -> Void)
     ) async throws -> UIImage
 }

@@ -21,12 +21,11 @@ struct STPixelEncoder: STEncodable {
     private init() {}
 
     func encode(
-        message: String,
+        data: Data,
         into image: UIImage,
-        with options: EncryptionOptions,
         progressHandler: ((CGFloat) async -> Void) = { _ in }
     ) async throws -> UIImage {
-        let messageToEncode = try encodeMessage(message, options: options)
+        let messageToEncode = data
         let messageBits = messageToEncode.bitsCount
         let headerBits = UInt16.bitWidth
         let messageSizeBits = UInt64.bitWidth
@@ -38,8 +37,8 @@ struct STPixelEncoder: STEncodable {
         guard imagePixels >= CGFloat(requiredModulationPixels) else { throw STPixelEncoderError.imageTooSmall }                     //필요한 픽셀수보다 이미지의 픽셀수가 작다면, 인코딩 불가
 
         var encodedData: [UInt8] = []                                                                                               //최종적으로 숨길 데이터를 binary로 인코딩해 합침
-        let encodedHeader = UInt16(options.header().rawValue).binaryData
-        encodedData.append(contentsOf: encodedHeader)
+//        let encodedHeader = UInt16(options.header().rawValue).binaryData
+//        encodedData.append(contentsOf: encodedHeader)
         let encodedMessageSize = UInt64(messageBits).binaryData
         encodedData.append(contentsOf: encodedMessageSize)
         encodedData.append(contentsOf: messageToEncode.binaryData())

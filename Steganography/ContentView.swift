@@ -73,10 +73,10 @@ struct ContentView: View {
                         guard let pickedImage else{ return }
                         let encoder: STEncodable = STPixelEncoder.shared
                         do {
+                            guard let encodedString = StringEncoder.shared.encode(message, options: .plain) else{ return }
                             let outputImage = try await encoder.encode(
-                                message: message,
-                                into: pickedImage,
-                                with: .plain
+                                data: encodedString,
+                                into: pickedImage
                             ) { progress in
                                 print("====", progress)
                             }
