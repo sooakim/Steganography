@@ -27,7 +27,7 @@ struct STPixelEncoder: STEncodable {
     ) async throws -> UIImage {
         let messageToEncode = data
         let messageBits = messageToEncode.bitsCount
-        let headerBits = UInt16.bitWidth
+        let headerBits = 0 //UInt16.bitWidth
         let messageSizeBits = UInt64.bitWidth
         let requiredBits = headerBits + messageSizeBits + messageBits
         let modulationBitsPerPixel = 2
@@ -43,7 +43,7 @@ struct STPixelEncoder: STEncodable {
         encodedData.append(contentsOf: encodedMessageSize)
         encodedData.append(contentsOf: messageToEncode.binaryData())
 
-        guard var bitmapBytes = image.bitmapData()?.bytes else{ throw STPixelEncoderError.decodeImageFailed }
+        guard var bitmapBytes = image.rotatedImage().bitmapData()?.bytes else{ throw STPixelEncoderError.decodeImageFailed }
         var progress: CGFloat = 0
         for index in (0..<requiredModulationPixels) {
             try Task.checkCancellation()
@@ -76,23 +76,6 @@ struct STPixelEncoder: STEncodable {
         guard let cgImage = context?.makeImage() else{ throw STPixelEncoderError.encodeImageFailed }
         return UIImage(cgImage: cgImage)
     }
-    
-    private func encodeMessage(_ message: String, options: EncryptionOptions) throws -> Data {
-        let messageToEncode: Data
-        switch options {
-        case .plain:
-            guard let messageData = message.data(using: .nonLossyASCII) else{ throw STPixelEncoderError.invalidPassword }
-            messageToEncode = messageData
-        case let .encryptWithAES(password):
-            guard let passwordData = password.data(using: .nonLossyASCII) else{ throw STPixelEncoderError.invalidPassword }
-            guard let messageData = message.data(using: .nonLossyASCII) else{ throw STPixelEncoderError.invalidPassword }
-            let randomIV = AES.randomIV(AES.blockSize)
-            let aes = try AES(key: passwordData.bytes, blockMode: CBC(iv: randomIV), padding: .pkcs7)
-            let encryptedMessage = try aes.encrypt(messageData.bytes)
-            messageToEncode = Data(encryptedMessage)
-        }
-        return messageToEncode
-    }
 }
 
 private extension STPixelEncoder {
@@ -121,44 +104,3 @@ private extension EncryptionOptions {
     }
 }
 
-private extension Data {
-    var bitsCount: Int {
-        let bitPerByte = 8
-        return count * bitPerByte
-    }
-    
-    func binaryData() -> Data {
-        Data(self.bytes.flatMap{ $0.binaryData })
-    }
-}
-
-private extension UIImage {
-    var pixelHeight: CGFloat {
-        self.size.height * self.scale
-    }
-    
-    var pixelWidth: CGFloat {
-        self.size.width * self.scale
-    }
-    
-    func bitmapData() -> Data? {
-        guard let cgImage = self.cgImage else{ return nil }
-        let width = Int(self.size.width)
-        let height = Int(self.size.height)
-        let bitsPerComponent = UInt8.bitWidth
-        let bytePerPixel = 4                                                                                                        // RGBA
-        let bytesPerRow = width * bytePerPixel
-        var data = [UInt8](repeating: 0, count: bytesPerRow * height)
-        guard let context = CGContext(
-            data: &data,
-            width: width,
-            height: height,
-            bitsPerComponent: bitsPerComponent,
-            bytesPerRow: width * bytePerPixel,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: self.size.width, height: self.size.height))
-        return Data(data)
-    }
-}

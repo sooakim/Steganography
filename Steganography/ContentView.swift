@@ -18,6 +18,9 @@ struct ContentView: View {
     @State private var message: String = ""
     @State private var password: String = ""
 
+    @State private var decodedMessage: String?
+    @State private var shouldShowAlert: Bool = false
+
     private let cancellableBag = CancellableBag()
 
     var body: some View {
@@ -80,7 +83,8 @@ struct ContentView: View {
                             ) { progress in
                                 print("====", progress)
                             }
-                            UIImageWriteToSavedPhotosAlbum(outputImage, nil, nil, nil)
+
+                            UIImageWriteToSavedPhotosAlbum(UIImage(data: outputImage.pngData()!)!, nil, nil, nil)
                         } catch {
                             print(error)
                         }
@@ -101,12 +105,20 @@ struct ContentView: View {
                     do {
                         guard let data = try await pickedItem.loadTransferable(type: Data.self), let uiImage = UIImage(data: data) else { return }
                         pickedImage = uiImage
+                        let decodedMessage = try await STPixelDecoder.shared.decode(image: uiImage, with: .plain)
+                        if let decodedMessage {
+                            self.decodedMessage = decodedMessage
+                            self.shouldShowAlert = true
+                        }
                     } catch {
                         print(error)
                     }
                 }.add(to: cancellableBag)
             })
             .photosPicker(isPresented: $isPresenting, selection: $pickedItem)
+            .alert(isPresented: $shouldShowAlert) {
+                Alert(title: Text("디코딩된 메시지"), message: Text(decodedMessage ?? ""))
+            }
         }
     }
 }
