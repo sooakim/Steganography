@@ -13,7 +13,7 @@ final class CancellableBag: Cancellable {
     }
     
     func cancel() {
-        var cancellables = self.cancellables
+        let cancellables = self.cancellables
         self.cancellables.removeAll()
         for cancellable in cancellables {
             cancellable.cancel()

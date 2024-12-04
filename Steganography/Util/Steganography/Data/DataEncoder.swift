@@ -7,13 +7,8 @@
 
 import Foundation
 
-enum DataEncodingOptions {
-    case plain
-    case encryptWithAES(password: String)
-}
-
 protocol DataEncodable {
     associatedtype Input
 
-    func encode(_ data: Input, options: DataEncodingOptions) -> Data?
+    func encode(_ data: Input, options: DataEncodingOptions) throws -> Data?
 }

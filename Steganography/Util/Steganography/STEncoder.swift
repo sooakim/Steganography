@@ -18,6 +18,7 @@ protocol STEncodable {
     /// - Returns: 합성된 이미지를 반환합니다.
     func encode(
         data: Data,
+        with header: STHeader,
         into image: UIImage,
         progressHandler: ((CGFloat) async -> Void)
     ) async throws -> UIImage

@@ -17,4 +17,14 @@ extension FixedWidthInteger {
         }
         return Data(binary)
     }
+
+    var binaryBitsData: Data {
+        var binary: [UInt8] = []
+        var number = self
+        for _ in (0..<bitWidth) {
+            binary.insert(UInt8(number & 1), at: 0)
+            number >>= 1
+        }
+        return Data(binary)
+    }
 }
