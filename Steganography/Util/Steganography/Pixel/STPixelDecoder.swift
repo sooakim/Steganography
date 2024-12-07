@@ -15,14 +15,8 @@ enum STPixelDecoderError: Error {
 }
 
 
-struct STPixelDecoder : STDecodable {
+struct STPixelDecoder : STLSBDecodable {
     static let shared = STPixelDecoder()
-
-    enum DecodingStep {
-    case header
-    case messageSize
-    case message
-    }
 
     func decode(
         image: UIImage,
@@ -35,28 +29,21 @@ struct STPixelDecoder : STDecodable {
         var messageSizeBitsBuffer: [UInt8] = []
         var messageBitsBuffer: [UInt8] = []
         var messageByteBuffer: [UInt8] = []
-        var messageBitsSize: UInt64 = 0
         var messageByteSize: UInt64 = 0
         var decodingStep: DecodingStep = .header
 
         for (index, byte) in bitmapBytes.enumerated() {
             try Task.checkCancellation()
-            await Task.yield()
 
             let pixelIndex = index / 4
             let componentIndex = index % 4
             let blueComponentIndex = 2
             guard componentIndex == blueComponentIndex else { continue }                                                            // blue byte만 필요
 
-            let blueBits = byte.binaryBitsData
-            print("pixel index", index / 4, blueBits.suffix(2).map{ String($0) }.joined())
-
             // skip header
-
             // headerBitsSize / 2 == 8bits
             if case .header = decodingStep, pixelIndex == headerBitsSize / 2 - 1 {
                 decodingStep = .messageSize
-                print("skip header")
                 continue
             }
 
@@ -69,7 +56,6 @@ struct STPixelDecoder : STDecodable {
                 guard let parsedSize = UInt64(binary: messageSizeBitsBuffer), parsedSize > 0 else {
                     throw STPixelDecoderError.decodeImageFailed
                 }
-                messageBitsSize = parsedSize
                 messageByteSize = parsedSize / 8
                 decodingStep = .message
                 continue
@@ -97,7 +83,7 @@ struct STPixelDecoder : STDecodable {
         return nil
     }
 
-    func decodeHeader(image: UIImage) async throws -> STHeader? {
+    func decodeHeader(image: UIImage) async throws -> STLSBHeader? {
         guard let bitmapBytes = image.bitmapData() else{ throw STPixelDecoderError.decodeImageFailed }
 
         let headerBitsSize = UInt16.bitWidth
@@ -115,11 +101,18 @@ struct STPixelDecoder : STDecodable {
 
             if headerBitsBuffer.count == headerBitsSize {
                 guard let headerValue = UInt16(binary: headerBitsBuffer) else{ throw STPixelDecoderError.decodeImageFailed }
-                return STHeader(rawValue: headerValue)
+                return STLSBHeader(rawValue: headerValue)
             }
         }
         return nil
     }
+
+    private enum DecodingStep {
+    case header
+    case messageSize
+    case message
+    }
+
 }
 
 extension FixedWidthInteger{

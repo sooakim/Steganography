@@ -35,16 +35,27 @@ final class LSBEncodingViewModel: ObservableObject {
     @Published var selectedImage: UIImage?
     @Published var exportImage: UIImage?
 
-    func nextStep() async throws -> LSBEncodingNavigationStep? {
+    func progress() -> CGFloat {
+        let maxCount = 4
+        return switch navigationSteps.last {
+        case .hiddenDataType: CGFloat(1) / CGFloat(maxCount)
+        case .messageInput, .fileInput: CGFloat(2) / CGFloat(maxCount)
+        case .hideIntoImage: CGFloat(3) / CGFloat(maxCount)
+        case .export: CGFloat(4) / CGFloat(maxCount)
+        case nil: 0
+        }
+    }
+
+    func nextStep() async throws -> NavigationStep<LSBEncodingNavigationStep>? {
         switch navigationSteps.last {
         case .hiddenDataType:
             switch selectedAttachmentType {
-            case .text: return .messageInput
-            case .file: return .fileInput
+            case .text: return .next(.messageInput)
+            case .file: return .next(.fileInput)
             case nil: return nil
             }
-        case .messageInput: return .hideIntoImage
-        case .fileInput: return .hideIntoImage
+        case .messageInput: return .next(.hideIntoImage)
+        case .fileInput: return .next(.hideIntoImage)
         case .hideIntoImage:
             guard let selectedAttachmentType else { return nil }
             switch selectedAttachmentType {
@@ -61,8 +72,10 @@ final class LSBEncodingViewModel: ObservableObject {
                 let image = try await STPixelEncoder.shared.encode(data: data, with: header, into: selectedImage)
                 guard let pngData = image.pngData() else{ return nil }
 
-                exportImage = UIImage(data: pngData)
-                return .export
+                await MainActor.run {
+                    exportImage = UIImage(data: pngData)
+                }
+                return .next(.export)
             case .file:
                 guard let importingFile, let selectedImage else { return nil }
                 let options: DataEncodingOptions = if !password.isEmpty {
@@ -76,19 +89,29 @@ final class LSBEncodingViewModel: ObservableObject {
                 let image = try await STPixelEncoder.shared.encode(data: data, with: header, into: selectedImage)
                 guard let pngData = image.pngData() else{ return nil }
 
-                exportImage = UIImage(data: pngData)
-                return .export
+                await MainActor.run {
+                    exportImage = UIImage(data: pngData)
+                }
+                return .next(.export)
             }
-        case .export:
-            navigationSteps.removeAll()
-            return .hiddenDataType
-        case nil: return .hiddenDataType
+        case .export: return .clear
+        case nil: return .next(.hiddenDataType)
         }
+    }
+
+    func clear(){
+        navigationSteps = []
+        selectedAttachmentType = nil
+        importingFile = nil
+        message = ""
+        password = ""
+        selectedImage = nil
+        exportImage = nil
     }
 }
 
 private extension LSBAttachmentType {
-    func asHeader() -> STHeader {
+    func asHeader() -> STLSBHeader {
         switch self {
         case .text: .text
         case .file: .file

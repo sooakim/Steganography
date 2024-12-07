@@ -30,10 +30,10 @@ struct FileDataEncoder: DataEncodable {
                 keyLength: 256 / 8,
                 variant: .sha3(.sha256)
             ).calculate()
-            let randomIV = Array(fileData.bytes.prefix(AES.blockSize))
-            let aes = try AES(key: key, blockMode: CBC(iv: randomIV), padding: .pkcs7)
+            let randomIV = AES.randomIV(AES.blockSize)
+            let aes = try AES(key: key, blockMode: CBC(iv: randomIV), padding: .pkcs5)
             guard let encryptedBytes = try? aes.encrypt(fileData.bytes) else { return nil }
-            encodedData = Data(encryptedBytes)
+            encodedData = Data(randomIV + encryptedBytes)
         }
         return encodedData
     }

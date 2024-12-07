@@ -27,33 +27,49 @@ enum LSBDecodingNavigationStep: Int, CaseIterable {
 
 final class LSBDecodingViewModel: ObservableObject {
     @Published var navigationSteps: [LSBDecodingNavigationStep] = []
-    
     @Published var selectedImage: UIImage?
     @Published var password: String = ""
     @Published var message: String = ""
     @Published var exportingFile: ExportingFile?
 
-    private var decodedHeader: STHeader?
+    private var decodedHeader: STLSBHeader?
 
-    func nextStep() async throws -> LSBDecodingNavigationStep? {
+    func progress() -> CGFloat {
+        var needsPassword = decodedHeader?.contains(.encryptWithAES256) ?? false
+        let maxCount = needsPassword ? 3 : 2
+        return switch navigationSteps.last {
+        case .import: CGFloat(1) / CGFloat(maxCount)
+        case .passwordInput: CGFloat(2) / CGFloat(maxCount)
+        case .message, .file: CGFloat(needsPassword ? 3 : 2) / CGFloat(maxCount)
+        case nil: 0
+        }
+    }
+
+    func nextStep() async throws -> NavigationStep<LSBDecodingNavigationStep>? {
         switch navigationSteps.last {
         case .import:
             guard let selectedImage else { return nil }
             guard let decodedHeader = try await STPixelDecoder.shared.decodeHeader(image: selectedImage) else { return nil }
-            self.decodedHeader = decodedHeader
+            await MainActor.run{
+                self.decodedHeader = decodedHeader
+            }
 
             if decodedHeader.contains(.encryptWithAES256) {
-                return .passwordInput
+                return .next(.passwordInput)
             }
 
             if decodedHeader.contains(.text), let decodedMessage = try await decodeText(from: selectedImage, options: .plain) {
-                message = decodedMessage
-                return .message
+                await MainActor.run{
+                    message = decodedMessage
+                }
+                return .next(.message)
             }
 
             if decodedHeader.contains(.file), let decodedFileURL = try await decodeFile(from: selectedImage, options: .plain) {
-                exportingFile = try ExportingFile(url: decodedFileURL)
-                return .file
+                try await MainActor.run{
+                    exportingFile = try ExportingFile(url: decodedFileURL)
+                }
+                return .next(.file)
             }
 
             return nil
@@ -62,20 +78,32 @@ final class LSBDecodingViewModel: ObservableObject {
             guard !password.isEmpty else { return nil }
 
             if decodedHeader.contains(.text), let decodedMessage = try await decodeText(from: selectedImage, options: .encryptWithAES(password: password)) {
-                message = decodedMessage
-                return .message
+                await MainActor.run{
+                    message = decodedMessage
+                }
+                return .next(.message)
             }
 
             if decodedHeader.contains(.file), let decodedFileURL = try await decodeFile(from: selectedImage, options: .encryptWithAES(password: password)) {
-                exportingFile = try ExportingFile(url: decodedFileURL)
-                return .file
+                try await MainActor.run{
+                    exportingFile = try ExportingFile(url: decodedFileURL)
+                }
+                return .next(.file)
             }
 
             return nil
-        case .message: return .import
-        case .file: return .import
-        case nil: return .import
+        case .message: return .clear
+        case .file: return .clear
+        case nil: return .next(.import)
         }
+    }
+
+    func clear() {
+        navigationSteps = []
+        selectedImage = nil
+        password = ""
+        message = ""
+        exportingFile = nil
     }
 
     private func decodeText(from image: UIImage, options: DataEncodingOptions) async throws -> String? {

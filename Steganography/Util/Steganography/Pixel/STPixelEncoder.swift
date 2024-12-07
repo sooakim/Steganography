@@ -15,14 +15,14 @@ enum STPixelEncoderError: Error {
     case encodeImageFailed
 }
 
-struct STPixelEncoder: STEncodable {
+struct STPixelEncoder: STLSBEncodable {
     static let shared = STPixelEncoder()
 
     private init() {}
 
     func encode(
         data: Data,
-        with header: STHeader,
+        with header: STLSBHeader,
         into image: UIImage,
         progressHandler: ((CGFloat) async -> Void) = { _ in }
     ) async throws -> UIImage {
@@ -48,7 +48,6 @@ struct STPixelEncoder: STEncodable {
         var progress: CGFloat = 0
         for index in (0..<requiredModulationPixels) {
             try Task.checkCancellation()
-            await Task.yield()
 
             let blueComponentIndex = 2
             let currentBlueByteIndex = index * 4 + blueComponentIndex
@@ -62,8 +61,8 @@ struct STPixelEncoder: STEncodable {
             await progressHandler(progress)
         }
 
-        let width = Int(image.size.width)
-        let height = Int(image.size.height)
+        let width = Int(image.pixelWidth)
+        let height = Int(image.pixelHeight)
         let bitsPerComponent = UInt8.bitWidth
         let bytePerPixel = 4                                                                                                        // RGBA
         let bytesPerRow = width * bytePerPixel

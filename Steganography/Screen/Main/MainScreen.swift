@@ -27,16 +27,16 @@ struct MainScreen: View {
             iconResource: .icPhoto,
             title: "PNG LSB 디코딩"
         ),
-        Question(
-            id: WorkCategory.fileMergeEncoding,
-            iconResource: .icMerge,
-            title: "파일 머지 인코딩"
-        ),
-        Question(
-            id: WorkCategory.fileMergeDecoding,
-            iconResource: .icMerge,
-            title: "파일 머지 디코딩"
-        )
+//        Question(
+//            id: WorkCategory.fileMergeEncoding,
+//            iconResource: .icMerge,
+//            title: "파일 머지 인코딩"
+//        ),
+//        Question(
+//            id: WorkCategory.fileMergeDecoding,
+//            iconResource: .icMerge,
+//            title: "파일 머지 디코딩"
+//        )
     ]
 
     var body: some View {

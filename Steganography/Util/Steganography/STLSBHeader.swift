@@ -1,11 +1,11 @@
 //
-//  STHeader.swift
+//  STLSBHeader.swift
 //  Steganography
 //
 //  Created by 김수아 on 11/24/24.
 //
 
-struct STHeader: OptionSet{
+struct STLSBHeader: OptionSet{
     static let encryptWithAES256 = Self(rawValue: 1 << 0)
     static let text = Self(rawValue: 1 << 1)
     static let file = Self(rawValue: 1 << 2)
@@ -17,7 +17,7 @@ struct STHeader: OptionSet{
     let rawValue: UInt16
 }
 
-extension STHeader{
+extension STLSBHeader{
     static func +(lhs: Self, rhs: Self) -> Self {
         var new = lhs
         new.insert(rhs)
@@ -30,8 +30,8 @@ extension STHeader{
 }
 
 extension DataEncodingOptions {
-    func asHeader() -> STHeader {
-        var header: STHeader = []
+    func asHeader() -> STLSBHeader {
+        var header: STLSBHeader = []
         switch self {
         case .plain:
             break
